@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Historial de servicio Geodis</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#1c2530;--mut:#66727f;--line:#dde3e9;--acc:#0b5cab;--ok:#1f8a4c;--bad:#c0392b;--okbg:#e3f4ea;--badbg:#fbe6e3}
+@media (prefers-color-scheme:dark){:root{--bg:#12171c;--card:#1a2129;--ink:#e8edf2;--mut:#93a0ad;--line:#2b3641;--acc:#5aa2e6;--ok:#4cc27d;--bad:#ef7b6d;--okbg:#17332a;--badbg:#3a1f1c}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--acc);color:#fff;padding:14px 16px}
+header h1{margin:0;font-size:18px}header small{opacity:.85}
+main{max-width:1000px;margin:0 auto;padding:12px}
+.tabs{display:flex;gap:6px;margin:4px 0 12px}
+.tabs button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px;border-radius:8px;cursor:pointer}
+.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.btn.p{background:var(--acc);color:#fff;border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font:inherit;padding:6px 10px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.chips button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+input,select{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;color:var(--mut)}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+.ok{background:var(--okbg);color:var(--ok)}.bad{background:var(--badbg);color:var(--bad)}.neu{background:var(--line);color:var(--mut)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:8px 0}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:10px}.kpi b{display:block;font-size:24px}.kpi span{color:var(--mut);font-size:12px}
+.info{color:var(--mut);margin:4px 0}.msg{padding:10px;border-radius:8px;background:var(--badbg);color:var(--bad);margin-bottom:10px}
+.demo{padding:8px 10px;border-radius:8px;background:var(--line);margin-bottom:10px;font-size:13px}
+.hide{display:none}
+#folioSheet{display:none}
+.ph{display:none}
+@media print{
+ body{background:#fff;color:#000}header,.noprint,.tabs{display:none!important}
+ .card{border:0;padding:0}.ph{display:block;margin-bottom:8px}
+ main{max-width:none;padding:0}table{min-width:0;font-size:12px}
+ :root{--ink:#000;--mut:#444;--line:#bbb;--card:#fff}
+ body.pm-folio main>*{display:none!important}
+ body.pm-folio #folioSheet{display:block!important}
+}
+#folioSheet dl{display:grid;grid-template-columns:150px 1fr;gap:6px 12px}#folioSheet dt{color:var(--mut)}#folioSheet dd{margin:0;font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>Historial de servicio · Geodis</h1><small id="sub">Consulta de equipos</small></header>
+<main>
+ <div id="demo" class="demo hide">Modo demostración: aún no se configuró la hoja de Google (ver <code>SHEET_ID</code> al inicio del script). Los datos mostrados son de ejemplo.</div>
+ <div id="err" class="msg hide"></div>
+ <div class="tabs noprint">
+  <button id="t1" class="on" onclick="tab(1)">Historial por equipo</button>
+  <button id="t2" onclick="tab(2)">Reporte semanal</button>
+ </div>
+
+ <section id="v1">
+  <div class="card noprint"><div class="chips" id="chips"></div>
+   <div class="row">
+    <input id="q" placeholder="Buscar folio u observación" oninput="renderEq()">
+    <select id="ft" onchange="renderEq()"><option value="">Todos los servicios</option><option>PREVENTIVO</option><option>CORRECTIVO</option></select>
+    <button class="btn p" onclick="window.print()">Imprimir hoja completa</button>
+   </div></div>
+  <div class="card"><div class="ph"><b>Historial de servicio · Geodis</b></div>
+   <h2 id="eqt" style="margin:0 0 4px"></h2><div class="info" id="eqi"></div>
+   <div class="wrap"><table><thead><tr><th>Fecha</th><th>Servicio</th><th>Horómetro</th><th>Folio</th><th>Observaciones</th><th class="noprint"></th></tr></thead><tbody id="tb"></tbody></table></div>
+   <div class="info" id="cnt"></div></div>
+ </section>
+
+ <section id="v2" class="hide">
+  <div class="card noprint"><div class="row">
+   <button class="btn" onclick="shiftWeek(-7)">◀ Anterior</button>
+   <input type="date" id="wd" onchange="renderWk()">
+   <button class="btn" onclick="shiftWeek(7)">Siguiente ▶</button>
+   <button class="btn p" onclick="window.print()">Imprimir reporte</button></div></div>
+  <div class="card"><div class="ph"><b>Grupo Redosa</b></div>
+   <h2 id="wt" style="margin:0 0 4px"></h2><div class="info" id="wr"></div>
+   <div class="kpis" id="kp"></div>
+   <div class="wrap"><table><thead><tr><th>Equipo</th><th>Marca / Modelo</th><th>Estado</th><th>Prev.</th><th>Corr.</th><th>Detalle</th></tr></thead><tbody id="wb"></tbody></table></div>
+   <div class="info">Disponibilidad = equipos sin servicio correctivo en la semana ÷ total de equipos. Incidencia = servicio correctivo registrado con fecha dentro de la semana (lunes a domingo).</div></div>
+ </section>
+
+ <div id="folioSheet" class="card"></div>
+</main>
+
+<script>
+// ====== CONFIGURACIÓN ======
+// Pega aquí el ID de tu hoja de Google (lo que va entre /d/ y /edit en la URL).
+// La hoja debe estar compartida como "Cualquier persona con el vínculo: Lector".
+const SHEET_ID = "1WzYTeVSvebOdiOULF9pApX4ECNHRgDqh-7qEI4V3ow4";
+const EQUIPOS = ["R01","R02","R03","R04","R05","TR01","TR02","TR03","TR04","OP01","HS01"];
+const TIPOS = {R:"Reach",TR:"Traspaleta",OP:"Order picker",HS:"Hombre sentado"};
+// ===========================
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = d => d ? d.toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}) : "";
+let DATA = {}, cur = EQUIPOS[0];
+
+function csv(t){const r=[];let row=[],f="",q=false;for(let i=0;i<t.length;i++){const c=t[i];
+ if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+ else if(c=='"')q=true;else if(c==","){row.push(f);f=""}
+ else if(c=="\n"){row.push(f);r.push(row);row=[];f=""}else if(c!="\r")f+=c}
+ if(f||row.length){row.push(f);r.push(row)}return r}
+
+function pd(s){s=(s||"").trim();let m;
+ if(m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))return new Date(+m[1],m[2]-1,+m[3]);
+ if(m=s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/)){let y=+m[3];if(y<100)y+=2000;return new Date(y,m[2]-1,+m[1])}
+ return null}
+
+let gvn=0;
+function cv(c){if(c==null)return "";const v=c.v;
+ if(typeof v==="string"){const m=v.match(/^Date\((\d+),(\d+),(\d+)/);if(m)return m[1]+"-"+String(+m[2]+1).padStart(2,"0")+"-"+String(+m[3]).padStart(2,"0")}
+ return c.f!=null?c.f:(v==null?"":String(v))}
+function gvJSON(base,sheet){return new Promise((res,rej)=>{
+ const cb="__gv"+(++gvn)+"_"+Date.now(),s=document.createElement("script");
+ const end=()=>{clearTimeout(to);delete window[cb];s.remove()};
+ const to=setTimeout(()=>{end();rej(new Error("Tiempo agotado leyendo la pestaña "+sheet))},20000);
+ window[cb]=r=>{end();
+  if(!r||r.status==="error"){const m=r&&r.errors&&r.errors[0];rej(new Error((m&&(m.detailed_message||m.message))||"Error de Google en la pestaña "+sheet))}
+  else res(((r.table&&r.table.rows)||[]).map(w=>(w.c||[]).map(cv)))};
+ s.onerror=()=>{end();rej(new Error("No se pudo conectar con Google (revisa internet, que la hoja sea pública y que el ID sea correcto). Pestaña "+sheet))};
+ s.src=base+"&tqx="+encodeURIComponent("out:json;responseHandler:"+cb);
+ document.head.appendChild(s)})}
+
+async function gv(sheet,range){
+ const base=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?headers=0&sheet=${encodeURIComponent(sheet)}&range=${range}`;
+ try{const r=await fetch(base+"&tqx=out:csv");
+  if(r.ok){const t=await r.text();if(!t.trim().startsWith("<"))return csv(t)}}catch(e){}
+ return gvJSON(base,sheet)}
+
+async function loadEq(n){
+ const [inf,rec]=await Promise.all([gv(n,"B2:C5"),gv(n,"B8:F1000")]);
+ const info={};inf.forEach(x=>{if(x[0])info[x[0].trim().toUpperCase()]=(x[1]||"").trim()});
+ const rows=rec.map(x=>({d:pd(x[0]),tipo:(x[1]||"").trim().toUpperCase(),horo:(x[2]||"").trim(),folio:(x[3]||"").trim(),obs:(x[4]||"").trim()}))
+  .filter(x=>x.d||x.tipo==="PREVENTIVO"||x.tipo==="CORRECTIVO");
+ return {marca:info.MARCA||"",modelo:info.MODELO||"",serie:info.SERIE||"",rows}}
+
+function demo(){const t=new Date(),d=k=>new Date(t.getFullYear(),t.getMonth(),t.getDate()-k);
+ EQUIPOS.forEach(n=>DATA[n]={marca:"Heli",modelo:"(modelo)",serie:"(serie)",rows:[]});
+ DATA.R01.rows=[{d:d(2),tipo:"PREVENTIVO",horo:"1,250",folio:"F-0001",obs:"Cambio de aceite y revisión general"},{d:d(30),tipo:"CORRECTIVO",horo:"1,100",folio:"F-0000",obs:"Cambio de sensor"}];
+ DATA.TR02.rows=[{d:d(1),tipo:"CORRECTIVO",horo:"860",folio:"F-0002",obs:"Falla de comunicación CAN"}];
+ $("demo").classList.remove("hide")}
+
+async function init(){
+ $("chips").innerHTML=EQUIPOS.map(n=>`<button onclick="pick('${n}')" data-n="${n}">${n}</button>`).join("");
+ const t=new Date();$("wd").value=t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+ if(!SHEET_ID){demo()}else{
+  try{const res=await Promise.all(EQUIPOS.map(loadEq));EQUIPOS.forEach((n,i)=>DATA[n]=res[i]);
+   $("sub").textContent="Actualizado: "+new Date().toLocaleString("es-MX")}
+  catch(e){$("err").textContent="No se pudo leer la hoja de Google. Revisa que esté compartida como «Cualquier persona con el vínculo: Lector». ("+e.message+")";$("err").classList.remove("hide");EQUIPOS.forEach(n=>DATA[n]={marca:"",modelo:"",serie:"",rows:[]})}}
+ pick(cur);renderWk()}
+
+function tab(n){$("v1").classList.toggle("hide",n!=1);$("v2").classList.toggle("hide",n!=2);
+ $("t1").classList.toggle("on",n==1);$("t2").classList.toggle("on",n==2)}
+function pick(n){cur=n;document.querySelectorAll("#chips button").forEach(b=>b.classList.toggle("on",b.dataset.n===n));renderEq()}
+
+function renderEq(){
+ const e=DATA[cur],tp=TIPOS[cur.replace(/\d+$/,"")]||"";
+ $("eqt").textContent="Equipo "+cur+(tp?" · "+tp:"");
+ $("eqi").textContent=["Marca: "+(e.marca||"—"),"Modelo: "+(e.modelo||"—"),"Serie: "+(e.serie||"—")].join("   |   ");
+ const q=$("q").value.toLowerCase(),ft=$("ft").value;
+ const rows=e.rows.map((r,i)=>({...r,i})).filter(r=>(!ft||r.tipo===ft)&&(!q||(r.folio+" "+r.obs).toLowerCase().includes(q)))
+  .sort((a,b)=>(b.d||0)-(a.d||0));
+ $("tb").innerHTML=rows.map(r=>`<tr><td>${fmt(r.d)}</td><td><span class="tag ${r.tipo==="CORRECTIVO"?"bad":"ok"}">${esc(r.tipo)}</span></td><td>${esc(r.horo)}</td><td>${esc(r.folio)}</td><td>${esc(r.obs)}</td><td class="noprint"><button class="btn" onclick="folio('${cur}',${r.i})">Imprimir folio</button></td></tr>`).join("")||`<tr><td colspan="6" class="info">Sin servicios registrados.</td></tr>`;
+ $("cnt").textContent=rows.length+" registro(s)"}
+
+function folio(n,i){const e=DATA[n],r=e.rows[i];
+ $("folioSheet").innerHTML=`<h2>Folio de servicio ${esc(r.folio||"(sin folio)")}</h2><p class="info">Grupo Redosa · Cliente: Geodis</p>
+ <dl><dt>Equipo</dt><dd>${esc(n)}</dd><dt>Marca / Modelo</dt><dd>${esc(e.marca)} ${esc(e.modelo)}</dd><dt>Serie</dt><dd>${esc(e.serie)}</dd>
+ <dt>Fecha</dt><dd>${fmt(r.d)}</dd><dt>Tipo de servicio</dt><dd>${esc(r.tipo)}</dd><dt>Horómetro</dt><dd>${esc(r.horo)}</dd>
+ <dt>Observaciones</dt><dd>${esc(r.obs)}</dd></dl>`;
+ document.body.classList.add("pm-folio");window.print()}
+window.addEventListener("afterprint",()=>document.body.classList.remove("pm-folio"));
+
+function monday(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
+function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);
+ return Math.ceil(((t-new Date(Date.UTC(t.getUTCFullYear(),0,1)))/864e5+1)/7)}
+function shiftWeek(k){const [y,m,d]=$("wd").value.split("-").map(Number);const x=new Date(y,m-1,d+k);
+ $("wd").value=x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");renderWk()}
+
+function renderWk(){
+ const [y,m,d]=$("wd").value.split("-").map(Number);if(!y)return;
+ const a=monday(new Date(y,m-1,d)),b=new Date(a.getFullYear(),a.getMonth(),a.getDate()+6,23,59,59);
+ $("wt").textContent="Reporte semanal de incidencias y disponibilidad · Semana "+isoWeek(a);
+ $("wr").textContent="Del "+fmt(a)+" al "+fmt(b)+" · Cliente: Geodis";
+ let con=0;
+ const html=EQUIPOS.map(n=>{const e=DATA[n],rs=e.rows.filter(r=>r.d&&r.d>=a&&r.d<=b);
+  const p=rs.filter(r=>r.tipo==="PREVENTIVO"),c=rs.filter(r=>r.tipo==="CORRECTIVO");if(c.length)con++;
+  const det=rs.map(r=>`${fmt(r.d)} · ${esc(r.tipo)}${r.folio?" · "+esc(r.folio):""}${r.obs?" — "+esc(r.obs):""}`).join("<br>");
+  return `<tr><td><b>${n}</b></td><td>${esc((e.marca+" "+e.modelo).trim())||"—"}</td><td><span class="tag ${c.length?"bad":"ok"}">${c.length?"Con incidencia":"Sin incidencia"}</span></td><td>${p.length}</td><td>${c.length}</td><td>${det||"—"}</td></tr>`}).join("");
+ $("wb").innerHTML=html;
+ const tot=EQUIPOS.length,disp=Math.round((tot-con)/tot*100);
+ $("kp").innerHTML=`<div class="kpi"><b>${tot}</b><span>Equipos</span></div><div class="kpi"><b>${tot-con}</b><span>Sin incidencia</span></div><div class="kpi"><b>${con}</b><span>Con incidencia</span></div><div class="kpi"><b>${disp}%</b><span>Disponibilidad</span></div>`}
+
+init();
+</script>
+</body>
+</html>
